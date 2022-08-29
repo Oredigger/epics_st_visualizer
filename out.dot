@@ -1,0 +1,6 @@
+digraph R{
+start -> high [label="v > 5.0" fontsize="8"];
+start -> low [label="v < 5.0" fontsize="8"];
+low -> high [label="v > 5.0" fontsize="8"];
+high -> low [label="v < 5.0" fontsize="8"];
+}

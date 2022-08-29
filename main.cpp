@@ -186,9 +186,13 @@ int main(void)
             }
             else if (s == INSIDE_STATE_MACHINE)
             {
-                if (token == "state" && isspace(next_c))
+                if (isspace(next_c))
                 {
-                    s = STATE_FOUND;
+                    if (token == "state")
+                    {
+                        s = STATE_FOUND;
+                    }
+                    
                     token.clear();
                 }
                 else if (next_c == '}' && in_state_machine_flag)

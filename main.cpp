@@ -28,11 +28,18 @@ enum State
     END
 };
 
-std::string op = " \t\n{}()=+-/*,;.[]";
+const std::string OP = " \t\n{}()=+-/*,;.[]&|^";
 
 int main(void)
 {
     std::ifstream fin("seq.st");
+
+    if (!fin.is_open())
+    {
+        std::cout << "Could not find file\n";
+        return EXIT_FAILURE;
+    }
+
     std::stringstream ss;
 
     ss << fin.rdbuf();
@@ -46,140 +53,182 @@ int main(void)
     std::vector <std::string> stn;
     std::vector <seq_transit_t> tt;
 
-    State s = GLOBAL_DECLARATIONS;
-    char prev_c = ' ';
+    int  curly_nested = 0, parenthesis_nested = 0;
     bool waive_flag = false, is_comment_flag = false;
     bool in_state_machine_flag = false, in_state_body_flag = false, in_transit_body_flag = false;
 
-    for (auto c : raw_txt)
+    State s = GLOBAL_DECLARATIONS;
+
+    for (int i = 1; i < raw_txt.length(); i++)
     {
-        if (!waive_flag && std::find(op.begin(), op.end(), c) == op.end()) 
+        char curr_c = raw_txt[i - 1];
+        char next_c = raw_txt[i];  
+
+        if (next_c == '*' && curr_c == '/')
         {
-            token += c;
+            is_comment_flag = true;
         }
-        else
-        {   
-            if (c == '*' && prev_c == '/')
+        else if (next_c == '/' && curr_c == '*')
+        {
+            is_comment_flag = false;
+        }
+        else if (!is_comment_flag)
+        {
+            if (!waive_flag && std::find(OP.begin(), OP.end(), curr_c) == OP.end()) 
             {
-                is_comment_flag = true;
+                token += curr_c;
             }
-            else if (c == '/' && prev_c == '*')
+            
+            if (s == STATE_FOUND)
             {
-                is_comment_flag = false;
-            }
-
-            if (!is_comment_flag)
-            {
-                if (s == STATE_FOUND)
+                if (in_state_body_flag && isspace(next_c))
                 {
-                    if (in_state_body_flag)
+                    tt.push_back({.cond = cond, .src_state = src_state, .dest_state = token});
+                    cond.clear();
+                    token.clear();
+                    
+                    s = INSIDE_STATE_BODY;
+                }
+                else if (next_c == '{')
+                {
+                    if (std::find(stn.begin(), stn.end(), token) == stn.end())
                     {
-                        tt.push_back({.cond = cond, .src_state = src_state, .dest_state = token});
-                        cond.clear();
-
-                        s = INSIDE_STATE_BODY;
+                        stn.push_back(token);
+                        src_state = token;
+                        token.clear();
                     }
-                    else
+
+                    s = INSIDE_STATE_BODY;
+                    in_state_body_flag = true;
+                }
+            }
+            else if (s == INSIDE_STATE_BODY)
+            {
+                if (token == "when" && next_c == '(')
+                {
+                    s = TRANSIT_FOUND;
+                    waive_flag = true;
+                    token.clear();
+                }
+                else if (token == "state" && isspace(next_c))
+                {
+                    s = STATE_FOUND;
+                    token.clear();
+                }
+                else if (next_c == '{')
+                {
+                    s = INSIDE_TRANSIT_BODY;
+                    in_transit_body_flag = true;
+                }
+                else if (next_c == '}' && in_state_body_flag)
+                {
+                    src_state.clear();
+                    s = INSIDE_STATE_MACHINE;
+                    in_state_body_flag = false;
+                }
+            }
+            else if (s == TRANSIT_FOUND)
+            {
+                if (next_c == '(')
+                {
+                    parenthesis_nested++;
+                }
+                else
+                {
+                    if (next_c == ')')
                     {
-                        if (std::find(stn.begin(), stn.end(), token) == stn.end())
+                        if (!parenthesis_nested)
                         {
-                            stn.push_back(token);
-                            src_state = token;
+                            waive_flag = false;
+                            cond = token;
+                            s = INSIDE_STATE_BODY;
                         }
+                        else
+                        {
+                            parenthesis_nested--;
+                        }
+                    }
+                }
 
-                        s = INSIDE_STATE_MACHINE;
-                    }
-                }
-                else if (s == INSIDE_STATE_BODY)
+                token += next_c;
+            }
+            else if (s == INSIDE_TRANSIT_BODY)
+            {
+                if (in_transit_body_flag)
                 {
-                    if (token == "when")
+                    if (next_c == '{')
                     {
-                        s = TRANSIT_FOUND;
+                        curly_nested++;
                     }
-                    else if (token == "state")
+                    if (next_c == '}')
                     {
-                        s = STATE_FOUND;
-                    }
-                    else if (c == '{')
-                    {
-                        s = INSIDE_TRANSIT_BODY;
-                        in_transit_body_flag = true;
-                    }
-                    else if (c == '}' && in_state_body_flag)
-                    {
-                        src_state.clear();
-                        s = INSIDE_STATE_MACHINE;
-                        in_state_body_flag = false;
+                        if (!curly_nested)
+                        {
+                            token.clear();
+                            in_transit_body_flag = false;
+                            s = INSIDE_STATE_BODY;
+                        }
+                        else
+                        {
+                            curly_nested--;
+                        }
                     }
                 }
-                else if (s == TRANSIT_FOUND)
+            }
+            else if (s == STATE_MACHINE_FOUND)
+            {
+                if (next_c == '{')
                 {
-                    if (c == '(')
-                    {
-                        waive_flag = true;
-                    }
-                    else if (c == ')')
-                    {
-                        waive_flag = false;
-                        cond = token;
-                        s = INSIDE_STATE_BODY;
-                    }
-                    else if (waive_flag)
-                    {
-                        token += c;
-                    }
+                    s = INSIDE_STATE_MACHINE;
+                    in_state_machine_flag = true;
+                    token.clear();
                 }
-                else if (s == INSIDE_TRANSIT_BODY)
+            }
+            else if (s == INSIDE_STATE_MACHINE)
+            {
+                if (token == "state" && isspace(next_c))
                 {
-                    if (c == '}' && in_transit_body_flag)
-                    {
-                        in_transit_body_flag = false;
-                        s = INSIDE_STATE_BODY;
-                    }
+                    s = STATE_FOUND;
+                    token.clear();
                 }
-                else if (s == STATE_MACHINE_FOUND)
+                else if (next_c == '}' && in_state_machine_flag)
                 {
-                    if (c == '{')
-                    {
-                        s = INSIDE_STATE_MACHINE;
-                        in_state_machine_flag = true;
-                    }
+                    s = END;
+                    in_state_machine_flag = false;
                 }
-                else if (s == INSIDE_STATE_MACHINE)
-                {
-                    if (token == "state")
-                    {
-                        s = STATE_FOUND;
-                    }
-                    else if (c == '{')
-                    {
-                        s = INSIDE_STATE_BODY;
-                        in_state_body_flag = true;
-                    }
-                    else if (c == '}' && in_state_machine_flag)
-                    {
-                        s = END;
-                        in_state_machine_flag = false;
-                    }
-                }
-                else if (s == GLOBAL_DECLARATIONS)
+            }
+            else if (s == GLOBAL_DECLARATIONS)
+            {
+                if (isspace(next_c))
                 {
                     if (token == "ss")
-                    {
+                    { 
                         s = STATE_MACHINE_FOUND;
                     }
-                }
 
-                if (!waive_flag)
-                {
                     token.clear();
                 }
             }
         }
-
-        prev_c = c;
     }    
 
+    std::ofstream fout;
+    fout.open("out.dot", std::ofstream::trunc);
+
+    if (fout.is_open())
+    {
+        fout << "digraph R{\n";
+
+        for (auto t : tt)
+        {
+            fout << t.src_state << " -> " << t.dest_state << " [label=\"" << t.cond << "\" fontsize=\"8\"];\n";
+        }
+
+        fout << "}\n";
+    }
+    
+    fout.close();
     fin.close();
+
     return 0;
 }

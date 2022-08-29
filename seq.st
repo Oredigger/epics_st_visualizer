@@ -1,19 +1,25 @@
-ss volt_check {
-    state light_off 
-    {
-        when (voltage > 5.0)
-        {
-            light = TRUE;
-            pvPut(light);
-        } state light_on
-    }
+/* Demo sequence.
+ *
+ * Run this to create dot file:
+ *
+ *   perl snl_dot.pl Test.st
+ */
+program test
 
-    state light_on
+double v;
+
+ss test /* Test State Set */
+{
+    state start /* Start */
     {
-        when (voltage < 3.0)
+        when (v > 5.0) {} state high /* when value is high */
+        when (v < 5.0) {} state low /* when value is low */
+    }state h /* Low:\nclose valve */
+    {
+        when (v > 5.0)
         {
-            light = FALSE;
-            pvPut(light);
-        } state light_off
-    }
-}
+        }
+        state high /* when^ value is high */}
+
+    state high /* High:\nopen valve */{when (v < 5.0)}state low /* when^ value is low */}}
+

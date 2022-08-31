@@ -148,7 +148,13 @@ std::vector <state_machine_t> get_transits(std::string raw_txt)
             {
                 if (in_state_body_flag && isspace(next_c))
                 {
-                    tt.push_back({.cond = cond, .src_state = src_state, .dest_state = token});
+                    seq_transit_t temp;
+                    temp.cond = cond;
+                    temp.src_state = src_state;
+                    temp.dest_state = token;
+
+                    tt.push_back(temp);
+
                     cond.clear();
                     token.clear();
                     
@@ -261,7 +267,12 @@ std::vector <state_machine_t> get_transits(std::string raw_txt)
                 {
                     in_state_machine_flag = false;
                     s = GLOBAL_DECLARATIONS;
-                    sm.push_back({.name = state_machine, .tt = tt});
+                    
+                    state_machine_t s;
+                    s.name = state_machine;
+                    s.tt = tt;
+                    
+                    sm.push_back(s);
                     tt.clear();
                 }
             }

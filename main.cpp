@@ -83,21 +83,18 @@ void write_seq_file(std::string seq_fn, std::string txt)
     seq_f.close();
 }
 
-typedef struct state_machine state_machine_t;
-typedef struct seq_transit seq_transit_t;
-
-struct state_machine
-{
-    std::string name;
-    std::vector<seq_transit_t> tt;
-};
-
-struct seq_transit
+typedef struct seq_transit
 {
     std::string cond;
     std::string src_state;
     std::string dest_state;
-};
+} seq_transit_t;
+
+typedef struct state_machine
+{
+    std::string name;
+    std::vector<seq_transit_t> tt;
+} state_machine_t;
 
 std::vector <state_machine_t> get_transits(std::string raw_txt)
 {
@@ -330,10 +327,33 @@ std::vector<std::string> state_names(std::vector<seq_transit_t> tt)
     return states;
 }
 
+void make_cond_prettier(std::string &cond, const std::string substr)
+{
+    if (!cond.length())
+    {
+        return;
+    }
+
+    size_t index = 0;
+
+    while (true)
+    {
+        index = cond.find(substr, index);
+
+        if (index != std::string::npos)
+        {
+            cond.insert(index, "\\n");
+            index += substr.length() + 2;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
 int create_dot(std::vector<state_machine_t> state_machines)
 {
-    std::default_random_engine gen;
-    std::uniform_int_distribution<int> dist(1, 16777216);
     std::ofstream fout("st.dot", std::ofstream::trunc);
 
     if (!fout.is_open())
@@ -341,7 +361,10 @@ int create_dot(std::vector<state_machine_t> state_machines)
         return 1;
     }
 
-    fout << "digraph\n{\n";
+    std::default_random_engine gen;
+    std::uniform_int_distribution<int> dist(1, 16777216);
+    
+    fout << "digraph\n{\n\trankdir=\"LR\"\n";
 
     for (auto sm : state_machines)
     {   
@@ -350,15 +373,19 @@ int create_dot(std::vector<state_machine_t> state_machines)
 
         for (auto s : states)
         {
-            fout << "\t\t" << sm.name << "_" << s << " [label=\"" << s << "\"]\n";
+            fout << "\t\t" << sm.name << "_" << s << " [fontname=\"Arial\", fontsize=\"16\", label=\"" << s << "\"]\n";
         }
 
         for (auto t : sm.tt)
         {
             int color_int = dist(gen);
+
+            make_cond_prettier(t.cond, "&&");
+            make_cond_prettier(t.cond, "||");
+
             fout << "\t\t" << sm.name << "_" << t.src_state << " -> " 
                  << sm.name << "_" << t.dest_state 
-                 << " [label=\"" << t.cond 
+                 << " [fontname=\"Arial\", min_len=10, label=\"" << t.cond 
                  << "\", fontsize=\"10\", color=\"#" << std::hex << color_int << "\", fontcolor=\"#" << std::hex << color_int << "\"]\n";
         }
 
@@ -371,15 +398,24 @@ int create_dot(std::vector<state_machine_t> state_machines)
     return 0;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    const std::string seq_fn = "seq.st";
+    if (argc <= 1 || argc > 3)
+    {
+        std::cout << "Wrong number of arguments specified\n";
+        return EXIT_FAILURE;
+    }
+
+    const std::string seq_fn = argv[1];
     std::string raw_txt = read_seq_file(seq_fn);
 
-    if (preprocess_string_macros(raw_txt, "param.txt") > 1)
+    if (argc == 3)
     {
-        std::cout << "Could not find file\n";
-        return EXIT_FAILURE;
+        if (preprocess_string_macros(raw_txt, argv[2]) > 1)
+        {
+            std::cout << "Could not find file\n";
+            return EXIT_FAILURE;
+        }
     }
     
     std::vector<state_machine_t> state_machines = get_transits(raw_txt);

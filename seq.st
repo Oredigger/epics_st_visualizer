@@ -1,153 +1,147 @@
-program example ("unit=ajk, stack=11000")
+program LRU24_SHOTPLAN
 
-/*=================== declarations =========================*/
-float ao1;
-assign ao1 to "{unit}:ao1";
-monitor ao1;
 
-float ao2;
-assign ao2 to "{unit}:ao1";
+ss {X}{
 
-float wf1[2000];
-assign wf1 to "{unit}:wf1.FVAL";
+	state off{
+		entry{
+			printf("Entered Off State\n");
+		}
+		when(SSPP_SHOT_PLAN_EXECUTE == 1){
+			printf("Going to Run Plan from Off State\n");
+			stepIndex = 0;	
+								
+		} state runPlan
+	}
 
-short bi1;
-assign bi1 to "{unit}:bi1";
+	state runPlan{
+		entry{
+		printf("Entered runPlan State\n");
+		}
+		when(SSPP_SHOT_PLAN_EXECUTE == 1 && execute[stepIndex] == 1 && stepIndex < 10){
+			printf("Going to Run Shot from Run Plan State\n");
 
-float delta;
-short prev_status;
-short ch_status;
+			CLRU08_LRU01_LRU_ACTIVE = lru01Active[stepIndex];
+			pvPut(CLRU08_LRU01_LRU_ACTIVE, SYNC);
+			CLRU08_LRU02_LRU_ACTIVE = lru02Active[stepIndex];
+			pvPut(CLRU08_LRU02_LRU_ACTIVE, SYNC);
+			CLRU08_LRU03_LRU_ACTIVE = lru03Active[stepIndex];
+			pvPut(CLRU08_LRU03_LRU_ACTIVE, SYNC);
+			CLRU08_LRU04_LRU_ACTIVE = lru04Active[stepIndex];
+			pvPut(CLRU08_LRU04_LRU_ACTIVE, SYNC);
+			CLRU08_LRU05_LRU_ACTIVE = lru05Active[stepIndex];
+			pvPut(CLRU08_LRU05_LRU_ACTIVE, SYNC);
+			CLRU08_LRU06_LRU_ACTIVE = lru06Active[stepIndex];
+			pvPut(CLRU08_LRU06_LRU_ACTIVE, SYNC);
+			CLRU08_LRU07_LRU_ACTIVE = lru07Active[stepIndex];
+			pvPut(CLRU08_LRU07_LRU_ACTIVE, SYNC);
+			CLRU08_LRU08_LRU_ACTIVE = lru08Active[stepIndex];
+			pvPut(CLRU08_LRU08_LRU_ACTIVE, SYNC);
+			CLRU08_LRU09_LRU_ACTIVE = lru09Active[stepIndex];
+			pvPut(CLRU08_LRU09_LRU_ACTIVE, SYNC);
+			CLRU08_LRU10_LRU_ACTIVE = lru10Active[stepIndex];
+			pvPut(CLRU08_LRU10_LRU_ACTIVE, SYNC);
+			CLRU08_LRU11_LRU_ACTIVE = lru11Active[stepIndex];
+			pvPut(CLRU08_LRU11_LRU_ACTIVE, SYNC);
+			CLRU08_LRU12_LRU_ACTIVE = lru12Active[stepIndex];
+			pvPut(CLRU08_LRU12_LRU_ACTIVE, SYNC);
+			CLRU08_LRU13_LRU_ACTIVE = lru13Active[stepIndex];
+			pvPut(CLRU08_LRU13_LRU_ACTIVE, SYNC);
+			CLRU08_LRU14_LRU_ACTIVE = lru14Active[stepIndex];
+			pvPut(CLRU08_LRU14_LRU_ACTIVE, SYNC);
+			CLRU08_LRU15_LRU_ACTIVE = lru15Active[stepIndex];
+			pvPut(CLRU08_LRU15_LRU_ACTIVE, SYNC);
+			CLRU08_LRU16_LRU_ACTIVE = lru16Active[stepIndex];
+			pvPut(CLRU08_LRU16_LRU_ACTIVE, SYNC);
+			CLRU08_LRU17_LRU_ACTIVE = lru17Active[stepIndex];
+			pvPut(CLRU08_LRU17_LRU_ACTIVE, SYNC);
+			CLRU08_LRU18_LRU_ACTIVE = lru18Active[stepIndex];
+			pvPut(CLRU08_LRU18_LRU_ACTIVE, SYNC);
+			CLRU08_LRU19_LRU_ACTIVE = lru19Active[stepIndex];
+			pvPut(CLRU08_LRU19_LRU_ACTIVE, SYNC);
+			CLRU08_LRU20_LRU_ACTIVE = lru20Active[stepIndex];
+			pvPut(CLRU08_LRU20_LRU_ACTIVE, SYNC);
+			CLRU08_LRU21_LRU_ACTIVE = lru21Active[stepIndex];
+			pvPut(CLRU08_LRU21_LRU_ACTIVE, SYNC);
+			CLRU08_LRU22_LRU_ACTIVE = lru22Active[stepIndex];
+			pvPut(CLRU08_LRU22_LRU_ACTIVE, SYNC);
+			CLRU08_LRU23_LRU_ACTIVE = lru23Active[stepIndex];
+			pvPut(CLRU08_LRU23_LRU_ACTIVE, SYNC);
+			CLRU08_LRU24_LRU_ACTIVE = lru24Active[stepIndex];
+			pvPut(CLRU08_LRU24_LRU_ACTIVE, SYNC);
 
-evflag ef1;
-evflag ef2;
+			//Transfers File Step[i] into Cluster Setup and uploads
+			strcpy(CLRU08_TMG_DPG_BULK_UPLOAD_FILEPATH, pattern[stepIndex]);
+			pvPut(CLRU08_TMG_DPG_BULK_UPLOAD_FILEPATH, SYNC);
 
-option +r;
+			CLRU08_TMG_DPG_PATTERN_UPLOAD_MODE = 1;
+			pvPut(CLRU08_TMG_DPG_PATTERN_UPLOAD_MODE, SYNC);	
 
-int fd; /* file descriptor for logging */
-char *pmac; /* used to access program macros */
+			CLRU08_TMG_DPG_PATTERN_UPLOAD_START = 1;
+			pvPut(CLRU08_TMG_DPG_PATTERN_UPLOAD_START, SYNC);	
 
-/*=================== State Sets ===========================*/
+			//Transfers Repeater Step[i] and uploads
+			SSPP_SHOT_SEQ_INTERVAL = interval[stepIndex];
+			pvPut(SSPP_SHOT_SEQ_INTERVAL, SYNC);
 
-/* State set level_det detects level > 5v & < 3v */
-ss level_det {
+			SSPP_SHOT_SEQ_SHOTS_REQUESTED = shots[stepIndex];
+			pvPut(SSPP_SHOT_SEQ_SHOTS_REQUESTED, SYNC);
 
-  state 
-  
-  
-  
-  c{when() {
-      fd = -1;
-      /* Use parameter to define logging file */
-      pmac = macValueGet("output");
-      if (pmac == 0 || pmac[0] == 0) {
-        printf("No macro defined for \"output\"\n");
-        fd = 1;
-      }
-      else {
-        fd = open(pmac, (O_CREAT | O_WRONLY), 0664);
-        if (fd == ERROR) {
-          printf("Can't open %s\n", pmac);
-          exit (-1);
-        }
-      }
-      fdprintf(fd, "Starting program\n");
-    } state init
-  }
+			SSPP_SHOT_SETUP_HV_SETPOINT = setpoint[stepIndex];
+			pvPut(SSPP_SHOT_SETUP_HV_SETPOINT, SYNC);
 
-  state init {
-    /* Initialize */
-    when (pvConnectCount() == pvChannelCount() ) {
-      fdprintf(fd, "All channels connectedly");
-      bi1 = FALSE;
-      ao2 = -1.0;
-      pvPut(bi1);
-      pvPut(ao2);
-      efClear(ef2);
-      efSet(ef1);
-    } state low
+			SSPP_SHOT_SETUP_APPLY = 1;
+			pvPut(SSPP_SHOT_SETUP_APPLY, SYNC);
+	
 
-    when (delay(5.0)) {
-      fdprintf(fd, "...waiting\n");
-    } state init
-  }
 
-  state low {
-    when (ao1 > 5.0) {
-      fdprintf(fd, "High\n");
-      bi1 = TRUE;
-      pvPut(bi1);
-    } state high
+		}state runShot
 
-    when (pvConnectCount() < pvChannelCount() ) {
-      fdprintf(fd, "Connection lost\n");
-      efClear(ef1);
-      efSet(ef2);
-    } state init
-  }
 
-  state high {
-    when (ao1 < 3.0) {
-      fdprintf(fd, "Low\n");
-      bi1 = FALSE;
-      pvPut(bi1);
-    } state low
+		when(SSPP_SHOT_PLAN_EXECUTE == 1 && execute[stepIndex] == 0 && stepIndex < 10){
+				
+			stepIndex = stepIndex + 1;
 
-    when (pvConnectCount() < pvChannelCount() ) {
-      efSet(ef2);
-    } state init
-  }
+
+		}state runPlan
+
+		when(stepIndex >= 10){
+
+			SSPP_SHOT_PLAN_EXECUTE = 0;
+			pvPut(SSPP_SHOT_PLAN_EXECUTE, SYNC);
+				
+	
+		}state off
+
+
+
+
+
+	}
+
+	state runShot{
+		entry{
+			printf("Entered runShot State\n");
+		}
+		when(SSPP_SHOT_PLAN_EXECUTE == 1 && SSPP_SHOT_SETUP_STEP_STATUS_FLAG == 1 && CLRU08_LRU01_DPG_USER_STATUS == 3){
+			
+			SSPP_SEQ_DATA_SELECT = 1;
+			pvPut(SSPP_SEQ_DATA_SELECT, SYNC);
+
+		}state running
+
+	}
+
+	state running{
+		entry{
+			printf("Entered Running\n");
+		}
+		
+		when(SSPP_SEQ_DATA_SELECT == 0){
+			stepIndex = stepIndex + 1;		
+		}state runPlan
+
+	}
+
 }
 
-/* Generate a ramp up/down */
-ss generate_voltage {
-  state init {
-    when (efTestAndClear(ef1)) {
-      printf("start ramp\n");
-      fdprintf(fd, "start ramp\n");
-      delta = 0.2;
-    } state ramp
-  }
-
-  state ramp {
-    when (delay(0.1)) {
-      if ( (delta > 0.0 && ao2 >= 11.0) ||
-        (delta < 0.0 && ao2 <= -11.0) ) {
-        delta = -delta;
-      }
-      ao2 += delta;
-      pvPut(ao2);
-    } state ramp
-
-    when (efTestAndClear(ef2)) {
-    } state init
-  }
-}
-
-/* Periodically write/read a waveform channel. This uses
-   pvGetComplete() to allow asynchronous pvGet().
-*/
-ss periodic_read {
-  state init {
-    when (efTestAndClear(ef1)) {
-      wf1[0] = 2.5;
-      wf1[1] = -2.5;
-      pvPut(wf1);
-    } state read_chan
-  }
-
-  state read_chan {
-    when (delay(5.)) {
-      wf1[0] += 2.5;
-      wf1[1] += -2.5;
-      pvPut(wf1);
-      pvGet(wf1);
-    } state wait_read
-  }
-
-  state wait_read {
-    when (pvGetComplete(wf1)) {
-      fdprintf(fd, "periodic read: ");
-      print_status(fd, wf1[0], pvStatus(wf1), pvSeverity(wf1));
-    } state read_chan
-  }
-}

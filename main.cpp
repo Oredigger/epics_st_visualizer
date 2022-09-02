@@ -118,7 +118,7 @@ std::vector <state_machine_t> get_transits(std::string raw_txt)
     std::string token, cond, src_state, state_machine;
 
     int  curly_nested = 0, parenthesis_nested = 0;
-    bool waive_flag = false, is_comment_flag = false, in_state_machine_flag = false, 
+    bool waive_flag = false, when_flag = false, is_comment_flag = false, in_state_machine_flag = false, 
          in_state_body_flag = false, in_transit_body_flag = false;
 
     const std::string OP = " \r\t\n\v\f{}()=+-/*,;.[]&|^%";
@@ -129,11 +129,11 @@ std::vector <state_machine_t> get_transits(std::string raw_txt)
         char curr_c = raw_txt[i - 1];
         char next_c = raw_txt[i];  
 
-        if (next_c == '*' && curr_c == '/')
+        if ((next_c == '*' && curr_c == '/') || (next_c == '/' && curr_c == '/'))
         {
             is_comment_flag = true;
         }
-        else if (next_c == '/' && curr_c == '*')
+        else if ((next_c == '/' && curr_c == '*') || (is_comment_flag && next_c == '\n'))
         {
             is_comment_flag = false;
         }
@@ -171,16 +171,30 @@ std::vector <state_machine_t> get_transits(std::string raw_txt)
             }
             else if (s == INSIDE_STATE_BODY)
             {
-                if (token == "when" && next_c == '(')
-                {
-                    s = TRANSIT_FOUND;
-                    waive_flag = true;
-                    token.clear();
-                }
-                else if (token == "state" && isspace(next_c))
+                if (token == "state" && isspace(next_c))
                 {
                     s = STATE_FOUND;
                     token.clear();
+                }
+                else if (isspace(next_c) || next_c == '(')
+                {
+                    if (token == "when")
+                    {
+                        when_flag = true;
+                        token.clear();
+                    }
+                    else
+                    {
+                        token.clear();
+                    }
+
+                    if (when_flag && next_c == '(')
+                    {
+                        s = TRANSIT_FOUND;
+                        waive_flag = true;
+                        when_flag = false;
+                        token.clear();
+                    }
                 }
                 else if (next_c == '{')
                 {
@@ -200,21 +214,23 @@ std::vector <state_machine_t> get_transits(std::string raw_txt)
                 {
                     parenthesis_nested++;
                 }
-                else
+                else if (next_c == ')')
                 {
-                    if (next_c == ')')
+                    if (!parenthesis_nested)
                     {
-                        if (!parenthesis_nested)
-                        {
-                            waive_flag = false;
-                            s = INSIDE_STATE_BODY;
-                            cond = token;
-                        }
-                        else
-                        {
-                            parenthesis_nested--;
-                        }
+                        waive_flag = false;
+                        s = INSIDE_STATE_BODY;
+                        cond = token;
                     }
+                    else
+                    {
+                        parenthesis_nested--;
+                    }
+                }
+
+                if (next_c == '\"' || next_c == '\\')
+                {
+                    token += "\\";
                 }
 
                 token += next_c;
